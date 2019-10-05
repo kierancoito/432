@@ -8,3 +8,10 @@
 #include <strings.h>      // bzero
 #include <netinet/tcp.h>  // SO_REUSEADDR
 #include <sys/uio.h>      // writev
+
+using namespace std;
+
+int main(int argumentNum, char *argument[]){
+
+
+}
