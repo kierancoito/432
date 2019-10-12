@@ -10,8 +10,17 @@
 #include <iostream>
 #include <sys/time.h>
 #include <pthread.h>
-
 using namespace std;
+/**
+ * Created by Kieran Coito
+ * CSS 432
+ * October 11th 2019
+ *
+ * This file will create a Server application that takes in two arguments from the user and from that, establishes a
+ * connection with the corresponding Client application. It will then wait for any communication, at which point
+ * it will take that communication, create a new thread and read all of the data from it before then communicating
+ * back to the Client that all the data has been received.
+ */
 
 int port, repetition, serverSD, newSD;
 const int bufSize = 1500;
@@ -69,8 +78,7 @@ void * thread_server(void *threadData){
     //extract data about connection and repetition
     struct thread_data *data;
     data = (struct thread_data *) threadData;
-    struct timeval start;
-    struct timeval stop;
+    struct timeval start, stop;
     int count = 0;
 
     //get intial time
@@ -128,7 +136,7 @@ int main(int argumentNum, char *argument[]){
 
     //run forever
     while(true){
-        int newSd = accept(serverSD, (sockaddr *)&newSockAddr, &newSockAddrSize);
+        newSD = accept(serverSD, (sockaddr *)&newSockAddr, &newSockAddrSize);
 
         //create new thread and run thread_server on that thread with the information received from the client
         pthread_t new_thread;
@@ -137,7 +145,7 @@ int main(int argumentNum, char *argument[]){
         //save data into thread_data object from socket that will be used in thread_server
         data = new thread_data();
         data->repetition = repetition;
-        data->sd = newSd;
+        data->sd = newSD;
 
         int iret1 = pthread_create( &new_thread, NULL, thread_server, (void*) data );
     }

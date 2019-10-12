@@ -13,9 +13,20 @@
 #include <string>
 #include <iostream>
 #include <exception>
-
 using namespace std;
 
+/**
+ * Created by Kieran Coito
+ * CSS 432
+ * October 11th 2019
+ *
+ * This file will create a Client application that will take in arguments from a user and then connect to a
+ * corresponding Server application. It will then send data via a port connection to the Server, once this is finished
+ * it will then get a confirmation from the Server..
+ * It will time these operations and then display them to the user.
+ *
+ * It has three modes. Multiwrite, Writev, and Single Write.
+ */
 
 
 int MULTIWRITE = 1;
@@ -101,11 +112,11 @@ int main(int argumentNum, char *argument[]) {
     struct hostent* host = gethostbyname(serverIp);
     sockaddr_in sendSockAddr;
     bzero( (char *)&sendSockAddr, sizeof(sendSockAddr));
-    sendSockAddr.sin_family = AF_INET; // Address Family Internet
+    sendSockAddr.sin_family = AF_INET;
     sendSockAddr.sin_addr.s_addr = inet_addr(inet_ntoa(*(struct in_addr*)*host->h_addr_list));
     sendSockAddr.sin_port = htons(port);
 
-    int clientSD = socket(AF_INET, SOCK_STREAM, 0); //SOCK_STREAM = TCP, 0 = IP
+    int clientSD = socket(AF_INET, SOCK_STREAM, 0);
     int connectStatus = connect( clientSD, (sockaddr*)&sendSockAddr, sizeof(sendSockAddr));
     if (connectStatus < 0) {
         cerr << "Connection failed!" << endl;
@@ -121,7 +132,7 @@ int main(int argumentNum, char *argument[]) {
         //different write scenarios as specified by assignment specifications
         if (type == MULTIWRITE) {
             for (int j = 0; j < nbufs; j++) {
-                write(clientSD, databuf[j], bufsize);    // sd: socket descriptor
+                write(clientSD, databuf[j], bufsize);
             }
         }
         if (type == WRITEV) {
@@ -130,7 +141,7 @@ int main(int argumentNum, char *argument[]) {
                 vector[j].iov_base = databuf[j];
                 vector[j].iov_len = bufsize;
             }
-            writev(clientSD, vector, nbufs);           // sd: socket descriptor
+            writev(clientSD, vector, nbufs);
         }
         if (type == SINGLE_WRITE) {
             write(clientSD, databuf,nbufs * bufsize);
