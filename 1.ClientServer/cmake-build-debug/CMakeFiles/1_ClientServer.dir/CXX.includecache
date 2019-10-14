@@ -1,0 +1,38 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/kierancoito/Desktop/School/19-20/2_FALL/CSS 432/432/1.ClientServer/Client.cpp
+sys/types.h
+-
+sys/socket.h
+-
+netinet/in.h
+-
+arpa/inet.h
+-
+netdb.h
+-
+unistd.h
+-
+string.h
+-
+netinet/tcp.h
+-
+stdlib.h
+-
+sys/uio.h
+-
+sys/time.h
+-
+string
+-
+iostream
+-
+exception
+-
+

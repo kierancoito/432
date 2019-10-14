@@ -1,0 +1,4 @@
+/Applications/CLion.app/Contents/bin/cmake/mac/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" "/Users/kierancoito/Desktop/School/19-20/2_FALL/CSS 432/432/1.ClientServer"
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /Users/kierancoito/Desktop/School/19-20/2_FALL/CSS 432/432/1.ClientServer/cmake-build-debug
