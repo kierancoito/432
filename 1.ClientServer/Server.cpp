@@ -44,6 +44,7 @@ bool verifyArgs(int argumentNum, char *argument[]){
     try{
         port = stoi(argument[1]);
         repetition = stoi(argument[2]);
+        
     } catch(invalid_argument& iaException){
         cerr << iaException.what() << endl;
         return false;
