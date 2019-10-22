@@ -10,6 +10,7 @@
 #include <iostream>
 #include <sys/time.h>
 #include <pthread.h>
+#include <string.h>
 using namespace std;
 /**
  * Created by Kieran Coito
@@ -19,8 +20,7 @@ using namespace std;
 
 
 
-int port, repetition, serverSD, newSD;
-const int bufSize = 1500;
+int port, serverSD, newSD;
 const int connection = 5;
 int uniCount = 0;
 
@@ -29,8 +29,11 @@ struct thread_data{
     int sd;
 };
 
-/*
- * Verify port number and arguments from user
+/**
+ *
+ * @param argumentNum
+ * @param argument
+ * @return
  */
 bool verifyArgs(int argumentNum, char *argument[]){
     if (argumentNum != 2){
@@ -40,14 +43,9 @@ bool verifyArgs(int argumentNum, char *argument[]){
     try{
         port = stoi(argument[1]);
 
-    } catch(invalid_argument& iaException){
-        cerr << iaException.what() << endl;
+    } catch ( exception ) {
+        cout << "One of your arguments was incorrect please check over and try again" << endl;
         return false;
-
-    } catch(exception e){
-        cerr << e.what() << endl;
-        return false;
-
     }
     if (port != 80 && (port < 1024 || port > 49152)){
         cerr << "Bad port number" << endl;
@@ -57,39 +55,62 @@ bool verifyArgs(int argumentNum, char *argument[]){
     return true;
 }
 
-/*
- * Method used to execute the different type scenarios in a p thread
+/**
  *
- * Parameter
- *      threadData - the data about socket connection and repetitions
+ * @param socketDescriptor
+ * @return
  */
-void * thread_server(void *threadData){
-    //increment count everytime this function is called
-    //while the instance of the server is running
-    uniCount++;
-    //create data buffer
-    char databuf[bufSize];
+string processGet(int sd){
+
+    string header = "";
+    char last = 0;
+
+    while ( true ){
+
+        char current = 0;
+        recv(sd , &current , 1 , 0);
+        // For each header, it is ended with a \r\n
+        if ( current == '\n' || current == '\r' ){
+            if ( last == '\r' && current == '\n' ){
+                break;
+            }
+
+        }else{
+            header += current;
+
+        }
+        last = current;
+    }
+    return header;
+}
+
+/**
+ *
+ * @param threadData
+ * @return
+ */
+void * processGet(void *threadData){
     //extract data about connection and repetition
     struct thread_data *data;
     data = (struct thread_data *) threadData;
-    int count = 0;
+    //get the message from the socket
+    string getRequest = processGet(data->sd);
 
+    if(getRequest.substr(0,3) == "GET"){
 
-    //go through all data
-    for ( int i = 0; i <= repetition; i++ ){
-        for ( int numberRead = 0; (numberRead += read(data->sd , databuf , bufSize - numberRead)) < bufSize; ++count );
-        count++;
     }
 
-    //write back to client
-    write(data->sd , &count , sizeof(count));
+
 
     // finish with this client. close it
     close(data->sd);
 }
 
-/*
- * Main function that will handle the majority of the server application work
+/**
+ *
+ * @param argumentNum
+ * @param argument
+ * @return
  */
 int main(int argumentNum, char *argument[]){
     //verify all input from the user is valid
@@ -132,6 +153,6 @@ int main(int argumentNum, char *argument[]){
         data = new thread_data();
         data->sd = newSD;
 
-        int iret1 = pthread_create( &new_thread, NULL, thread_server, (void*) data );
+        int iret1 = pthread_create( &new_thread, NULL, processGet, (void*) data );
     }
 }

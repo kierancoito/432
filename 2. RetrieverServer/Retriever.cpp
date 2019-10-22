@@ -6,13 +6,14 @@
 #include <unistd.h>       // read, write, close
 #include <string.h>       // bzero
 #include <netinet/tcp.h>  // SO_REUSEADDR
-
 #include <stdlib.h>       // EXIT_FAILURE
 #include <sys/uio.h>      // writev
 #include <sys/time.h>     // timeval
 #include <string>
 #include <iostream>
 #include <exception>
+#include <fstream>
+
 using namespace std;
 
 /**
@@ -23,84 +24,130 @@ using namespace std;
  *
  */
 
+int port;
+char *serverName, *fileName;
 
-
-int port, repetition, nbufs, bufsize, type;
-char *serverIp;
+string NAME = "savedPage.txt";
 
 /*
  * Takes in the user arguments and verifies that they are all valid
  */
 bool verifyArgs(int argumentNum, char *argument[]) {
 
-    if (argumentNum != 7) {
-        cout << "Need 7 args. Instead got " << argumentNum << " args." << endl;
+    if (argumentNum != 4) {
+        cout << "Need 4 args. Instead got " << argumentNum << " args." << endl;
         return false;
     }
 
     try {
         port = stoi(argument[1]);
-        repetition = stoi(argument[2]);
-        nbufs = stoi(argument[3]);
-        bufsize = stoi(argument[4]);
-        serverIp = argument[5];
-        type = stoi(argument[6]);
+        //remove http:// part!!!
+        serverName = argument[2];
+        fileName = argument[3];
 
-    } catch (invalid_argument ) {
-        cout << "One of your arguments was incorrect please check over and try again" << endl;
-        return false;
-    } catch (exception ) {
+    } catch ( exception ) {
         cout << "One of your arguments was incorrect please check over and try again" << endl;
         return false;
     }
 
     //ensure valid port
-    if (port > 49152 || port < 1024) {
+    if (port != 80 && (port > 49152 || port < 1024) {
         cout << "Port number invalid: " << port << endl;
         return false;
     }
 
-    //ensure total buffer doesn't exceed 1500
-    if (nbufs * bufsize != 1500) {
-        cout << "Number of buffers * buffer size != 1500" << endl;
-        cout << "Number of buffers: " << nbufs << ", ";
-        cout << "Buffer size: " << bufsize << "." << endl;
-        return false;
-    }
-    //ensure valid number of repitions
-    if (repetition < 0) {
-        cout << "Number of times repeated is negative!" << endl;
-        return false;
-    }
-    //ensure tpe is correct
-    if (type != 1 && type != 2 && type != 3) {
-        cout << " Type must be 1, 2, or 3. You entered " << type  << endl;
-        return false;
-    }
     return true;
 }
 
-int main(int argumentNum, char *argument[]) {
+string processGet(int sd){
 
-    //
-    // ARGS NEEDED Server name (website name), file path(extension) and port number
-    //
+    string header = "";
+    char last = 0;
+
+    while ( true ){
+
+        char current = 0;
+        recv(sd , &current , 1 , 0);
+        // For each header, it is ended with a \r\n
+        if ( current == '\n' || current == '\r' ){
+            if ( last == '\r' && current == '\n' ){
+                break;
+            }
+
+        }else{
+            header += current;
+
+        }
+        last = current;
+    }
+    return header;
+}
+
+void receiveHtml(int SD){
+
+    int length = 0;
+
+    while ( true ){
+        string response = processGet(SD);
+
+        //end of header
+        if ( response == "" ){
+            break;
+        }
+
+        cout << response << endl;
+
+        //number of bytes that will be in the body of the message
+        if ( response.substr(0 , 15) == "Content-Length:" ){
+            length = atoi(response.substr(16 , response.length()).c_str());
+        }
+    }
+
+    //open file to save website
+    ofstream output;
+    output.open(NAME);
+
+    //create buffer size of website file and receive that website file into the buffer
+    char buffer[length];
+    recv(SD , &buffer , length , 0);
+
+    //convert char array to a single string
+    string html = "";
+    for ( int i = 0; i < length; i++ ){
+        html += buffer[i];
+    }
+
+    //save html to file and display it to the user
+    output << html;
+    cout << html << endl;
+
+    //close file and socket
+    close(SD);
+    output.close();
+    return;
+}
+
+/**
+ *
+ * @param argumentNum nunmber of arguments
+ * @param argument servername, filename, and portnumber as received as command line arguments
+ * @return
+ */
+int main(int argumentNum, char *argument[]) {
 
     if (!verifyArgs(argumentNum, argument)) {
         cout << "Arguments were invalid." << endl;
         return -1;
     }
 
-    char databuf[nbufs][bufsize];
-
     // set up data structure and connect to port
     // as specified in lecture slides
-    struct hostent* host = gethostbyname(serverIp);
+    struct hostent* host = gethostbyname(serverName);
     sockaddr_in sendSockAddr;
     bzero( (char *)&sendSockAddr, sizeof(sendSockAddr));
 
     sendSockAddr.sin_family = AF_INET;
-    sendSockAddr.sin_addr.s_addr = inet_addr(inet_ntoa(*(struct in_addr*)*host->h_addr_list));
+    sendSockAddr.sin_addr.s_addr = inet_addr( inet_ntoa(*(struct in_addr*)*host->h_addr_list) );
     sendSockAddr.sin_port = htons(port);
 
     int clientSD = socket(AF_INET, SOCK_STREAM, 0);
@@ -111,13 +158,16 @@ int main(int argumentNum, char *argument[]) {
         close(clientSD);
         return -1;
     }
-
-    int numberOfRead;
-
-    //read back from server to confirm writing was finished
-    read(clientSD, &numberOfRead, sizeof(numberOfRead));
-
-    close(clientSD);
+    //create get request
+    string getRequest = string("GET " + string(fileName) + " HTTP/1.1\r\n"
+                               + "Host: " + string(serverName) + "\r\n" + "\r\n");
+    //send get request to host
+    int result = send(clientSD, getRequest.c_str(), sizeof(getRequest.c_str()), 0);
+    if ( result <= 0 ){
+        cout << "Unable to send the request";
+        return -1;
+    }
+    //receive back from server
+    receiveHtml(connectStatus);
     return 0;
-
 }
