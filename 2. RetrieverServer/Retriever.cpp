@@ -29,8 +29,11 @@ char *serverName, *fileName;
 
 string NAME = "savedPage.txt";
 
-/*
- * Takes in the user arguments and verifies that they are all valid
+/**
+ *
+ * @param argumentNum
+ * @param argument
+ * @return
  */
 bool verifyArgs(int argumentNum, char *argument[]) {
 
@@ -41,7 +44,6 @@ bool verifyArgs(int argumentNum, char *argument[]) {
 
     try {
         port = stoi(argument[1]);
-        //remove http:// part!!!
         serverName = argument[2];
         fileName = argument[3];
 
@@ -56,9 +58,23 @@ bool verifyArgs(int argumentNum, char *argument[]) {
         return false;
     }
 
+    //fix server name if needed
+    if(serverName.substr(0,6) == "http://"){
+        serverName = serverName.substr(7, serverName.length-7);
+
+    }
+    if(serverName.substr(0,7) == "https://"){
+        serverName.substr(8 ,serverName.length-7);
+
+    }
     return true;
 }
 
+/**
+ *
+ * @param sd
+ * @return
+ */
 string processGet(int sd){
 
     string header = "";
@@ -76,13 +92,16 @@ string processGet(int sd){
 
         }else{
             header += current;
-
         }
         last = current;
     }
     return header;
 }
 
+/**
+ *
+ * @param SD
+ */
 void receiveHtml(int SD){
 
     int length = 0;
