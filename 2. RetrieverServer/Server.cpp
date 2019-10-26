@@ -28,10 +28,10 @@ struct thread_data {
 };
 
 /**
- *
- * @param argumentNum
- * @param argument
- * @return
+ * This method will verify that all parameters passed into the application are valid
+ * @param argumentNum number of parameters that were passed into the application
+ * @param argument char array of the parameters that user passed into the application
+ * @return whether all parameters are valid
  */
 bool verifyArgs(int argumentNum, char *argument[]) {
     if (argumentNum != 2) {
@@ -49,60 +49,67 @@ bool verifyArgs(int argumentNum, char *argument[]) {
         cerr << "Bad port number" << endl;
         return false;
     }
-
     return true;
 }
 
 /**
- *
- * @param socketDescriptor
- * @return
+ * This method will take return the current line of the get request in the socket
+ * @param sd the socket where the get request is being sent over
+ * @return string that represents a line of the get request
  */
 string processGet(int sd){
 
     string header = "";
-    char last = 0;
+    //keep track of the previous char so that the two consecutive escape chars
+    //can be acknowledged properly
+    char previous = 0;
 
+    //continue to pull out of the socket until end of line characters are hit
     while ( true ){
-
+        //keep track of current char
         char current = 0;
+        //pull out the next char in the socket
         recv(sd , &current , 1 , 0);
-        // For each header, it is ended with a \r\n
+        // if the previous and current chars are the two escape chars than break out of the loop
+        // otherwise add the current char to the header string and set previous to the current char
         if ( current == '\n' || current == '\r' ){
-            if ( last == '\r' && current == '\n' ){
+            if ( previous == '\r' && current == '\n' ){
                 break;
             }
 
         }else{
             header += current;
         }
-        last = current;
+        previous = current;
     }
+    //return current line
     return header;
 }
 
 /**
+ * This method will return the string message for the get response that corresponds to
+ * the code it must reply with
  *
- * @param statusCode
- * @return
+ * @param statusCode the status code for the response messsage
+ * @return the first line of the response message
  */
 string statusResponse(int statusCode){
     string response = "";
     switch(statusCode){
         case 200:
-            response = "HTTP/1.1 200 OK\r\n";
+            response = "HTTP/1.0 200 OK\r\n";
             break;
         case 400:
-            response = "HTTP/1.1 400 Bad Request\r\n";
+            response = "HTTP/1.0 400 Bad Request\r\n";
             break;
         case 401:
-            response = "HTTP/1.1 401 Unauthorized\r\n";
+            response = "HTTP/1.0 401 Unauthorized\r\n";
             break;
         case 403:
-            response = "HTTP/1.1 403 Forbidden\r\n";
+            response = "HTTP/1.0 403 Forbidden\r\n";
             break;
         case 404:
-            response = "HTTP/1.1 404 Not Found\r\n";
+            response = "HTTP/1.0 404 Not Found\r\n";
             break;
         default:
             break;
@@ -111,10 +118,12 @@ string statusResponse(int statusCode){
 }
 
 /**
+ * This method will construct the response message to the GET request
  *
- * @param filePath
- * @param statusCode
- * @param fileContent
+ * @param filePath the file that the get request is looking for
+ * @param statusCode the status code message that the get reponse will contain
+ * @param fileContent the content of the get response which will contain either the contents of the file
+ *                  being looked for, or an error message
  */
 void response(string &filePath, string &statusCode, string &fileContent) {
     fileContent = "";
@@ -124,35 +133,34 @@ void response(string &filePath, string &statusCode, string &fileContent) {
         fileContent = "Accessing that file is Forbidden";
         statusCode = statusResponse(403);
 
-    }else if (filePath.length() >= 15) {
+    }
+    //checks if the access is to SecretFile.html which is unauthorized to the user
+    else if (filePath.substr(filePath.length() - 15, filePath.length()).compare("SecretFile.html") == 0) {
+        fileContent = "Access to that file is Unauthorized";
+        statusCode = statusResponse(401);
 
-        if (filePath.substr(filePath.length() - 15, filePath.length()).compare("SecretFile.html") == 0) {
-            fileContent = "Access to that file is Unauthorized";
-            statusCode = statusResponse(401);
-        }
-
-    } else {
-        // All the other cases is valid
-        // Need to append a . in front to know start to search from current path
+    }
+    //all other cases
+    else {
+        // append a . so that the search for the file happens in the active directory
         filePath = "." + filePath;
-        cout << "Looking for this file " + filePath << endl;
         FILE *file = fopen(filePath.c_str(), "r");
 
         // Could not open the file because it doesn't exist
         if (file == nullptr) {
-
             fileContent = "That file could not be found";
             statusCode = statusResponse(404);
 
         } else {
-            // Found the file
+            // Found the file, and now copy it into a string to send
             while (!feof(file)) {
 
                 string line;
                 char c = fgetc(file);
+                //skip invalid characters
                 if (c < 0) {
                     continue;
-                    // Encountered not supported character. Skip that character
+
                 }
                 // Manually append these to the string response
                 if (c == '\n') {
@@ -168,12 +176,14 @@ void response(string &filePath, string &statusCode, string &fileContent) {
             statusCode = statusResponse(200);
         }
     }
+    return;
 }
 
 /**
+ * This will process the get request that was sent to the server and then respond to it
  *
- * @param threadData
- * @return
+ * @param threadData - the object that contains the socket info to get the request
+ * @return N/A
  */
 void *processGet(void *threadData) {
     //extract data about connection and repetition
@@ -187,19 +197,14 @@ void *processGet(void *threadData) {
     while (getting == false) {
         //read each line in the get request for all needed info
         string getRequest = processGet(sd);
-
-        cout << "	Header: " << getRequest << "\n";
-
         //extract file name once it is found which should be after the GET in the first line of the request
         if (getRequest.substr(0, 3) == "GET") {
             file = getRequest.substr(4, getRequest.length() - 13);
-
-            //todo remove once done testing
-            cout << "GOT file!  " << file << "\n";
+            //mark getting as true to exit the loop early
             getting = true;
         }
-
         //this will be hit if the entire request is parsed and a file is not found
+        //force out of the loop as there is nothing left to check
         if (getRequest == "") {
             break;
         }
@@ -207,11 +212,14 @@ void *processGet(void *threadData) {
 
     string statusCode;
     string fileContent;
+    //create response if there was a valid request
     if (getting == true) {
         response(file, statusCode, fileContent);
 
-    } else {
-        // Could not recognize the get request
+    }
+    //create response for invalid request
+    else {
+
         fileContent = "Request could not be processed. Please verify formatting";
         statusCode = statusResponse(400);
     }
@@ -219,31 +227,33 @@ void *processGet(void *threadData) {
     string pageLength = to_string(fileContent.size());
 
     //each line of response message
-    string locationLine = "Location " + file;
+    string locationLine = "Location " + file + "\r\n";
     string contentLine = "Content-Length: " + pageLength + "\r\n";
     string contentType = "Content-Type: text/plain\r\n\r\n";
 
     //create full response message
     string responseFull = statusCode + locationLine + contentLine + contentType + fileContent;
 
-    cout << "Printing out the response " + responseFull << endl;
+    //send response
+    int result = send(sd, responseFull.c_str(), strlen(responseFull.c_str()), 0);
+    if(result < 0){
+        cout << "sending did not work" << endl;
 
-    send(sd, &responseFull[0], responseFull.size(), 0);
+    }
+    //close socket
     close(sd);
     return 0;
 }
 
 /**
+ * This method will control the server
  *
- * @param argumentNum
- * @param argument
- * @return
+ * @param argumentNum number of arguments from the user
+ * @param argument array of the arguments from the user, only argument needed is port number
+ * @return int signifing how the main was terminated
  */
 int main(int argumentNum, char *argument[]) {
 
-    argumentNum = 2; //
-    char * tempArg[] = {"", "2050"};
-    argument = tempArg;
     //verify all input from the user is valid
     if (!verifyArgs(argumentNum, argument)) {
         cout << "Arguments were invalid." << endl;
