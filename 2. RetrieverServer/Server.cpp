@@ -135,13 +135,14 @@ void response(string &filePath, string &statusCode, string &fileContent) {
 
     }
     //checks if the access is to SecretFile.html which is unauthorized to the user
-    else if (filePath.substr(filePath.length() - 15, filePath.length()).compare("SecretFile.html") == 0) {
+    else if (filePath.compare("SecretFile.html") == 0) {
         fileContent = "Access to that file is Unauthorized";
         statusCode = statusResponse(401);
 
     }
     //all other cases
     else {
+
         // append a . so that the search for the file happens in the active directory
         filePath = "." + filePath;
         FILE *file = fopen(filePath.c_str(), "r");
@@ -152,6 +153,7 @@ void response(string &filePath, string &statusCode, string &fileContent) {
             statusCode = statusResponse(404);
 
         } else {
+
             // Found the file, and now copy it into a string to send
             while (!feof(file)) {
 
@@ -194,24 +196,25 @@ void *processGet(void *threadData) {
     string file = "";
     bool getting = false;
 
-    while (getting == false) {
-        //read each line in the get request for all needed info
-        string getRequest = processGet(sd);
-        //extract file name once it is found which should be after the GET in the first line of the request
-        if (getRequest.substr(0, 3) == "GET") {
-            file = getRequest.substr(4, getRequest.length() - 13);
-            //mark getting as true to exit the loop early
-            getting = true;
+    while ( true ){
+        // Read a newline-terminated string:
+        string header = processGet(sd);
+        if ( header == "" ){
+            break;
         }
-        //this will be hit if the entire request is parsed and a file is not found
-        //force out of the loop as there is nothing left to check
-        if (getRequest == "") {
+        cout << "Header: " << header << "\n";
+        // Only support GET request, flag will not be set if this does not exist
+        if ( header.substr(0 , 3) == "GET" ){
+            // Number 13 is for for " HTTP/1.1\r\n"
+            file = header.substr(4 , header.length() - 13);
+            cout << "Found file: " << file << "\n";
+            getting = true;
             break;
         }
     }
 
-    string statusCode;
-    string fileContent;
+    string statusCode = "";
+    string fileContent = "";
     //create response if there was a valid request
     if (getting == true) {
         response(file, statusCode, fileContent);
@@ -219,7 +222,6 @@ void *processGet(void *threadData) {
     }
     //create response for invalid request
     else {
-
         fileContent = "Request could not be processed. Please verify formatting";
         statusCode = statusResponse(400);
     }
@@ -240,6 +242,7 @@ void *processGet(void *threadData) {
         cout << "sending did not work" << endl;
 
     }
+    cout << "finished connection" << endl;
     //close socket
     close(sd);
     return 0;
@@ -262,7 +265,7 @@ int main(int argumentNum, char *argument[]) {
 
     //create data structures for socket connection as specified in lecture slides
     sockaddr_in acceptSocketAddr;
-    bzero((char *) &acceptSocketAddr, sizeof(acceptSocketAddr));
+    bzero((char *)& acceptSocketAddr, sizeof(acceptSocketAddr));
     acceptSocketAddr.sin_family = AF_INET;
     acceptSocketAddr.sin_addr.s_addr = htonl(INADDR_ANY);
     acceptSocketAddr.sin_port = htons(port);
@@ -270,11 +273,14 @@ int main(int argumentNum, char *argument[]) {
     // Open socket and bind
     serverSD = socket(AF_INET, SOCK_STREAM, 0); // SOCK_STREAM = TCP, 0 = IP
     const int on = 1;
-    setsockopt(serverSD, SOL_SOCKET, SO_REUSEADDR, (char *) &on, sizeof(int));
-    bind(serverSD, (sockaddr *) &acceptSocketAddr, sizeof(acceptSocketAddr));
+    setsockopt(serverSD, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(int));
+    bind(serverSD, (sockaddr*)&acceptSocketAddr, sizeof(acceptSocketAddr));
 
     // Listen and accept
-    listen(serverSD, connection);
+    int listenResult = listen(serverSD, connection);
+    if(listenResult < 0){
+        cerr << "could not listen" << endl;
+    }
     sockaddr_in newSockAddr;
     socklen_t newSockAddrSize = sizeof(newSockAddr);
 
@@ -289,7 +295,7 @@ int main(int argumentNum, char *argument[]) {
         //save data into thread_data object from socket that will be used in thread_server
         data = new thread_data();
         data->sd = newSD;
-
+        cout << "connection made, processing information now" << endl;
         int iret1 = pthread_create(&new_thread, NULL, processGet, (void *) data);
     }
 }

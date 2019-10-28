@@ -209,6 +209,7 @@ int main(int argumentNum, char *argument[]) {
     sendSockAddr.sin_port = htons(port);
     int clientSD = socket(AF_INET, SOCK_STREAM, 0);
 
+    cout << "attempting connection" << endl;
     int connectStatus = connect( clientSD, (sockaddr*)&sendSockAddr, sizeof(sendSockAddr));
     if (connectStatus < 0) {
         cerr << "Connection failed!" << endl;
@@ -219,6 +220,7 @@ int main(int argumentNum, char *argument[]) {
     string getRequest = requestType + " " + string(fileName) + " HTTP/1.0\r\n"
                                + "Host: " + string(serverName) + "\r\n" + "\r\n";
     //send get request to host
+    cout << "sending request" << endl;
     int result = send(clientSD, getRequest.c_str(), strlen(getRequest.c_str()), 0);
     if ( result <= 0 ){
         cout << "Unable to send the request";
