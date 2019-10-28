@@ -238,11 +238,9 @@ void *processGet(void *threadData) {
 
     //send response
     int result = send(sd, responseFull.c_str(), strlen(responseFull.c_str()), 0);
-    if(result < 0){
+    if(result < 0) {
         cout << "sending did not work" << endl;
-
     }
-    cout << "finished connection" << endl;
     //close socket
     close(sd);
     return 0;
