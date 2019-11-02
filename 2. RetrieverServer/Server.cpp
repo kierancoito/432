@@ -129,13 +129,13 @@ void response(string &filePath, string &statusCode, string &fileContent) {
     fileContent = "";
 
     // Trying to access a file that is above the directory the server is running
-    if (filePath.substr(0, 2).compare("..") == 0) {
+    if (filePath.substr(0, 3).compare("/..") == 0) {
         fileContent = "Accessing that file is Forbidden";
         statusCode = statusResponse(403);
 
     }
     //checks if the access is to SecretFile.html which is unauthorized to the user
-    else if (filePath.compare("SecretFile.html") == 0) {
+    else if (filePath.compare("/SecretFile.html") == 0) {
         fileContent = "Access to that file is Unauthorized";
         statusCode = statusResponse(401);
 
@@ -202,12 +202,12 @@ void *processGet(void *threadData) {
         if ( header == "" ){
             break;
         }
-        cout << "Header: " << header << "\n";
         // Only support GET request, flag will not be set if this does not exist
         if ( header.substr(0 , 3) == "GET" ){
             // Number 13 is for for " HTTP/1.1\r\n"
+
             file = header.substr(4 , header.length() - 13);
-            cout << "Found file: " << file << "\n";
+            cout << "Requested document is " + file + ", looking for it now" << endl;
             getting = true;
             break;
         }
@@ -237,11 +237,14 @@ void *processGet(void *threadData) {
     string responseFull = statusCode + locationLine + contentLine + contentType + fileContent;
 
     //send response
+    cout << "sending back response" << endl;
     int result = send(sd, responseFull.c_str(), strlen(responseFull.c_str()), 0);
     if(result < 0) {
         cout << "sending did not work" << endl;
     }
     //close socket
+    cout << "closing socket" << endl;
+    cout << endl;
     close(sd);
     return 0;
 }
@@ -283,6 +286,7 @@ int main(int argumentNum, char *argument[]) {
     socklen_t newSockAddrSize = sizeof(newSockAddr);
 
     //run forever
+    cout << "connection established, waiting to accept" << endl;
     while (true) {
         newSD = accept(serverSD, (sockaddr *) &newSockAddr, &newSockAddrSize);
 
